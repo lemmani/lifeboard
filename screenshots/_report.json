@@ -1,0 +1,421 @@
+{
+  "results": [
+    {
+      "id": "01",
+      "name": "load home",
+      "pass": true,
+      "ms": 851,
+      "err": null,
+      "shot": "screenshots/01_load_home.png"
+    },
+    {
+      "id": "02",
+      "name": "nav: Goals",
+      "pass": true,
+      "ms": 79,
+      "err": null,
+      "shot": "screenshots/02_nav_Goals.png"
+    },
+    {
+      "id": "03",
+      "name": "nav: Matrix",
+      "pass": true,
+      "ms": 47,
+      "err": null,
+      "shot": "screenshots/03_nav_Matrix.png"
+    },
+    {
+      "id": "04",
+      "name": "nav: Finance",
+      "pass": true,
+      "ms": 41,
+      "err": null,
+      "shot": "screenshots/04_nav_Finance.png"
+    },
+    {
+      "id": "05",
+      "name": "nav: Settings",
+      "pass": true,
+      "ms": 30,
+      "err": null,
+      "shot": "screenshots/05_nav_Settings.png"
+    },
+    {
+      "id": "06",
+      "name": "nav: Timeline",
+      "pass": true,
+      "ms": 28,
+      "err": null,
+      "shot": "screenshots/06_nav_Timeline.png"
+    },
+    {
+      "id": "07",
+      "name": "open Create Goal modal",
+      "pass": true,
+      "ms": 40,
+      "err": null,
+      "shot": "screenshots/07_open_Create_Goal_modal.png"
+    },
+    {
+      "id": "08",
+      "name": "step 1: title + category + dates",
+      "pass": true,
+      "ms": 64,
+      "err": null,
+      "shot": "screenshots/08_step_1_title_category_dates.png"
+    },
+    {
+      "id": "09",
+      "name": "step 2: financial target + focus",
+      "pass": true,
+      "ms": 63,
+      "err": null,
+      "shot": "screenshots/09_step_2_financial_target_focus.png"
+    },
+    {
+      "id": "10",
+      "name": "step 3: add 2 tasks",
+      "pass": true,
+      "ms": 371,
+      "err": null,
+      "shot": "screenshots/10_step_3_add_2_tasks.png"
+    },
+    {
+      "id": "11",
+      "name": "submit Create Goal",
+      "pass": true,
+      "ms": 94,
+      "err": null,
+      "shot": "screenshots/11_submit_Create_Goal.png"
+    },
+    {
+      "id": "12",
+      "name": "open goal drawer",
+      "pass": true,
+      "ms": 39,
+      "err": null,
+      "shot": "screenshots/12_open_goal_drawer.png"
+    },
+    {
+      "id": "13",
+      "name": "drawer: add task with picker",
+      "pass": true,
+      "ms": 381,
+      "err": null,
+      "shot": "screenshots/13_drawer_add_task_with_picker.png"
+    },
+    {
+      "id": "14",
+      "name": "drawer: toggle task done",
+      "pass": true,
+      "ms": 341,
+      "err": null,
+      "shot": "screenshots/14_drawer_toggle_task_done.png"
+    },
+    {
+      "id": "15",
+      "name": "drawer: Mark Complete goal",
+      "pass": true,
+      "ms": 539,
+      "err": null,
+      "shot": "screenshots/15_drawer_Mark_Complete_goal.png"
+    },
+    {
+      "id": "16",
+      "name": "drawer: Reopen goal",
+      "pass": true,
+      "ms": 544,
+      "err": null,
+      "shot": "screenshots/16_drawer_Reopen_goal.png"
+    },
+    {
+      "id": "17",
+      "name": "drawer: Edit → 3-step modal (Basics→Targets→Funding)",
+      "pass": true,
+      "ms": 1343,
+      "err": null,
+      "shot": "screenshots/17_drawer_Edit_3_step_modal_Basics_Targets_Funding_.png"
+    },
+    {
+      "id": "18",
+      "name": "close drawer with Esc",
+      "pass": true,
+      "ms": 315,
+      "err": null,
+      "shot": "screenshots/18_close_drawer_with_Esc.png"
+    },
+    {
+      "id": "19",
+      "name": "reopen drawer for edited goal (left column)",
+      "pass": true,
+      "ms": 34,
+      "err": null,
+      "shot": "screenshots/19_reopen_drawer_for_edited_goal_left_column_.png"
+    },
+    {
+      "id": "20",
+      "name": "drawer: Delete → confirm dialog appears",
+      "pass": true,
+      "ms": 201,
+      "err": null,
+      "shot": "screenshots/20_drawer_Delete_confirm_dialog_appears.png"
+    },
+    {
+      "id": "21",
+      "name": "confirm dialog: Cancel keeps goal",
+      "pass": true,
+      "ms": 359,
+      "err": null,
+      "shot": "screenshots/21_confirm_dialog_Cancel_keeps_goal.png"
+    },
+    {
+      "id": "22",
+      "name": "drawer: Delete → confirm → goal removed",
+      "pass": true,
+      "ms": 870,
+      "err": null,
+      "shot": "screenshots/22_drawer_Delete_confirm_goal_removed.png"
+    },
+    {
+      "id": "23",
+      "name": "go to Matrix",
+      "pass": true,
+      "ms": 32,
+      "err": null,
+      "shot": "screenshots/23_go_to_Matrix.png"
+    },
+    {
+      "id": "24",
+      "name": "matrix: drag card across quadrants",
+      "pass": true,
+      "ms": 877,
+      "err": null,
+      "shot": "screenshots/24_matrix_drag_card_across_quadrants.png"
+    },
+    {
+      "id": "25",
+      "name": "matrix: complete a task (animation)",
+      "pass": true,
+      "ms": 729,
+      "err": null,
+      "shot": "screenshots/25_matrix_complete_a_task_animation_.png"
+    },
+    {
+      "id": "26",
+      "name": "matrix: delete task via X icon",
+      "pass": true,
+      "ms": 1011,
+      "err": null,
+      "shot": "screenshots/26_matrix_delete_task_via_X_icon.png"
+    },
+    {
+      "id": "27",
+      "name": "go to Finance",
+      "pass": true,
+      "ms": 27,
+      "err": null,
+      "shot": "screenshots/27_go_to_Finance.png"
+    },
+    {
+      "id": "28",
+      "name": "open Log Income modal",
+      "pass": true,
+      "ms": 34,
+      "err": null,
+      "shot": "screenshots/28_open_Log_Income_modal.png"
+    },
+    {
+      "id": "29",
+      "name": "fill + submit income",
+      "pass": true,
+      "ms": 88,
+      "err": null,
+      "shot": "screenshots/29_fill_submit_income.png"
+    },
+    {
+      "id": "30",
+      "name": "delete a transaction with confirm",
+      "pass": true,
+      "ms": 1038,
+      "err": null,
+      "shot": "screenshots/30_delete_a_transaction_with_confirm.png"
+    },
+    {
+      "id": "31",
+      "name": "Esc closes goal modal",
+      "pass": true,
+      "ms": 351,
+      "err": null,
+      "shot": "screenshots/31_Esc_closes_goal_modal.png"
+    },
+    {
+      "id": "32",
+      "name": "Esc closes goal drawer",
+      "pass": true,
+      "ms": 1163,
+      "err": null,
+      "shot": "screenshots/32_Esc_closes_goal_drawer.png"
+    },
+    {
+      "id": "33",
+      "name": "settings: reset → custom dialog",
+      "pass": true,
+      "ms": 1957,
+      "err": null,
+      "shot": "screenshots/33_settings_reset_custom_dialog.png"
+    },
+    {
+      "id": "34",
+      "name": "go to Goals",
+      "pass": true,
+      "ms": 25,
+      "err": null,
+      "shot": "screenshots/34_go_to_Goals.png"
+    },
+    {
+      "id": "35",
+      "name": "Goals filter: Primary only",
+      "pass": true,
+      "ms": 332,
+      "err": null,
+      "shot": "screenshots/35_Goals_filter_Primary_only.png"
+    },
+    {
+      "id": "36",
+      "name": "Goals filter: Secondary",
+      "pass": true,
+      "ms": 164,
+      "err": null,
+      "shot": "screenshots/36_Goals_filter_Secondary.png"
+    },
+    {
+      "id": "37",
+      "name": "Goals filter: All",
+      "pass": true,
+      "ms": 167,
+      "err": null,
+      "shot": "screenshots/37_Goals_filter_All.png"
+    },
+    {
+      "id": "38",
+      "name": "open drawer via Goals card",
+      "pass": true,
+      "ms": 238,
+      "err": null,
+      "shot": "screenshots/38_open_drawer_via_Goals_card.png"
+    },
+    {
+      "id": "39",
+      "name": "Timeline zoom: Quarter",
+      "pass": true,
+      "ms": 1033,
+      "err": null,
+      "shot": "screenshots/39_Timeline_zoom_Quarter.png"
+    },
+    {
+      "id": "40",
+      "name": "Timeline zoom: Month",
+      "pass": true,
+      "ms": 232,
+      "err": null,
+      "shot": "screenshots/40_Timeline_zoom_Month.png"
+    },
+    {
+      "id": "41",
+      "name": "Timeline zoom: Year",
+      "pass": true,
+      "ms": 214,
+      "err": null,
+      "shot": "screenshots/41_Timeline_zoom_Year.png"
+    },
+    {
+      "id": "42",
+      "name": "Finance CSV export downloads",
+      "pass": true,
+      "ms": 340,
+      "err": null,
+      "shot": "screenshots/42_Finance_CSV_export_downloads.png"
+    },
+    {
+      "id": "43",
+      "name": "Matrix goal-filter dropdown",
+      "pass": true,
+      "ms": 267,
+      "err": null,
+      "shot": "screenshots/43_Matrix_goal_filter_dropdown.png"
+    },
+    {
+      "id": "44",
+      "name": "Settings JSON export downloads",
+      "pass": true,
+      "ms": 325,
+      "err": null,
+      "shot": "screenshots/44_Settings_JSON_export_downloads.png"
+    },
+    {
+      "id": "45",
+      "name": "Timeline Month zoom: days-of-week visible",
+      "pass": true,
+      "ms": 1172,
+      "err": null,
+      "shot": "screenshots/45_Timeline_Month_zoom_days_of_week_visible.png"
+    },
+    {
+      "id": "46",
+      "name": "Finance shows Savings/Income/Expenses tiles",
+      "pass": true,
+      "ms": 46,
+      "err": null,
+      "shot": "screenshots/46_Finance_shows_Savings_Income_Expenses_tiles.png"
+    },
+    {
+      "id": "47",
+      "name": "Log expense modal opens",
+      "pass": true,
+      "ms": 36,
+      "err": null,
+      "shot": "screenshots/47_Log_expense_modal_opens.png"
+    },
+    {
+      "id": "48",
+      "name": "submit expense",
+      "pass": true,
+      "ms": 153,
+      "err": null,
+      "shot": "screenshots/48_submit_expense.png"
+    },
+    {
+      "id": "49",
+      "name": "Recent income → View all modal",
+      "pass": true,
+      "ms": 929,
+      "err": null,
+      "shot": "screenshots/49_Recent_income_View_all_modal.png"
+    },
+    {
+      "id": "50",
+      "name": "Matrix: click task title → Edit modal",
+      "pass": true,
+      "ms": 891,
+      "err": null,
+      "shot": "screenshots/50_Matrix_click_task_title_Edit_modal.png"
+    },
+    {
+      "id": "51",
+      "name": "Edit Task: change title + save",
+      "pass": true,
+      "ms": 90,
+      "err": null,
+      "shot": "screenshots/51_Edit_Task_change_title_save.png"
+    },
+    {
+      "id": "52",
+      "name": "empty state when no goals",
+      "pass": true,
+      "ms": 588,
+      "err": null,
+      "shot": "screenshots/52_empty_state_when_no_goals.png"
+    }
+  ],
+  "consoleErrors": []
+}

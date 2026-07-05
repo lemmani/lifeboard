@@ -1,0 +1,195 @@
+/* ======================================================================
+   LifeBoard — warm & human design system
+   Type:  Hanken Grotesk (UI/display) + Space Mono (figures/labels)
+   Color: warm cream canvas, warm-white surfaces, terracotta brand,
+          warmed functional status colors, soft category hues
+   ====================================================================== */
+
+:root {
+  /* canvas + surfaces */
+  --bg:          oklch(0.969 0.013 73);
+  --bg-2:        oklch(0.955 0.016 71);
+  --surface:     oklch(0.995 0.004 80);
+  --surface-2:   oklch(0.962 0.012 74);
+  --surface-3:   oklch(0.935 0.015 72);
+
+  /* ink */
+  --ink:         oklch(0.285 0.018 55);
+  --ink-2:       oklch(0.475 0.020 56);
+  --ink-3:       oklch(0.635 0.018 62);
+  --line:        oklch(0.905 0.012 71);
+  --line-2:      oklch(0.865 0.014 70);
+
+  /* brand — terracotta */
+  --brand:       oklch(0.645 0.130 42);
+  --brand-strong:oklch(0.560 0.135 40);
+  --brand-ink:   oklch(0.430 0.110 40);
+  --brand-wash:  oklch(0.930 0.038 52);
+  --brand-wash-2:oklch(0.895 0.055 50);
+
+  /* functional status (warmed) */
+  --st-track:    oklch(0.585 0.115 235);  /* on track  – blue   */
+  --st-track-wash: oklch(0.935 0.035 235);
+  --st-risk:     oklch(0.745 0.130 72);   /* at risk   – amber  */
+  --st-risk-wash:  oklch(0.945 0.055 78);
+  --st-over:     oklch(0.585 0.165 30);   /* overdue   – red    */
+  --st-over-wash:  oklch(0.930 0.045 32);
+  --st-done:     oklch(0.625 0.105 156);  /* completed – green  */
+  --st-done-wash:  oklch(0.935 0.045 158);
+
+  /* categories */
+  --cat-financial:      oklch(0.620 0.105 158);
+  --cat-financial-wash: oklch(0.935 0.040 158);
+  --cat-career:         oklch(0.560 0.120 285);
+  --cat-career-wash:    oklch(0.930 0.040 288);
+  --cat-education:      oklch(0.585 0.115 235);
+  --cat-education-wash: oklch(0.935 0.035 235);
+  --cat-personal:       oklch(0.645 0.130 42);
+  --cat-personal-wash:  oklch(0.930 0.038 52);
+  --cat-health:         oklch(0.640 0.120 5);
+  --cat-health-wash:    oklch(0.935 0.040 8);
+
+  /* shadows */
+  --sh-sm: 0 1px 2px oklch(0.4 0.03 60 / 0.05), 0 1px 3px oklch(0.4 0.03 60 / 0.06);
+  --sh-md: 0 2px 6px oklch(0.4 0.03 60 / 0.06), 0 8px 20px oklch(0.4 0.03 60 / 0.07);
+  --sh-lg: 0 8px 24px oklch(0.4 0.03 60 / 0.10), 0 20px 50px oklch(0.4 0.03 60 / 0.12);
+  --sh-pop: 0 12px 40px oklch(0.4 0.03 60 / 0.16);
+
+  --r-sm: 9px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 26px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: var(--font-hanken), system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.mono { font-family: var(--font-space-mono), ui-monospace, monospace; }
+.tnum { font-variant-numeric: tabular-nums; }
+button { font-family: inherit; cursor: pointer; }
+::selection { background: var(--brand-wash-2); }
+
+/* ---------- app shell ---------- */
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+.sidebar {
+  width: 250px; flex: 0 0 250px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  padding: 22px 16px 16px;
+}
+.brand-row { display: flex; align-items: center; gap: 11px; padding: 4px 8px 22px; }
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: var(--brand); color: #fff;
+  display: grid; place-items: center; box-shadow: var(--sh-sm);
+}
+.brand-name { font-weight: 800; font-size: 19px; letter-spacing: -0.02em; }
+.brand-sub { font-size: 11px; color: var(--ink-3); margin-top: 1px; letter-spacing: 0.02em; }
+
+.nav { display: flex; flex-direction: column; gap: 3px; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: var(--r-md);
+  color: var(--ink-2); font-weight: 600; font-size: 14.5px;
+  border: none; background: transparent; text-align: left; width: 100%;
+  transition: background 0.15s, color 0.15s;
+}
+.nav-item:hover { background: var(--surface-2); color: var(--ink); }
+.nav-item.active { background: var(--brand-wash); color: var(--brand-ink); }
+.nav-item.active svg { stroke: var(--brand); }
+.nav-item svg { stroke: currentColor; flex: 0 0 auto; }
+.nav-badge {
+  margin-left: auto; font-size: 11px; font-weight: 700;
+  background: var(--surface-3); color: var(--ink-2);
+  padding: 1px 8px; border-radius: 999px; min-width: 22px; text-align: center;
+}
+.nav-item.active .nav-badge { background: var(--brand); color: #fff; }
+
+.side-spacer { flex: 1; }
+.side-card {
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 13px; margin-bottom: 12px;
+}
+.side-focus-label { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; }
+.side-focus-band { display: flex; gap: 4px; margin-top: 9px; }
+.fb-seg { flex: 1; height: 6px; border-radius: 999px; background: var(--surface-3); }
+.fb-seg.on { background: var(--brand); }
+
+.user-row { display: flex; align-items: center; gap: 10px; padding: 6px 6px 0; }
+.avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--cat-career); color: #fff; display: grid; place-items: center;
+  font-weight: 800; font-size: 13px;
+}
+
+/* ---------- main ---------- */
+.main { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
+.topbar {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: 16px;
+  padding: 18px 30px; background: oklch(0.969 0.013 73 / 0.82);
+  backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
+}
+.page-title { font-size: 23px; font-weight: 800; letter-spacing: -0.025em; }
+.page-sub { font-size: 13px; color: var(--ink-2); margin-top: 1px; }
+.top-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 13px; border-radius: 999px; font-weight: 600; font-size: 13px;
+  border: 1px solid var(--line-2); background: var(--surface); color: var(--ink);
+  transition: background 0.14s, border-color 0.14s, transform 0.08s;
+}
+.pill:hover { background: var(--surface-2); }
+.pill:active { transform: translateY(1px); }
+.pill.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+.pill.ghost:hover { background: var(--surface-2); color: var(--ink); }
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 999px; font-weight: 700; font-size: 13.5px;
+  border: none; background: var(--brand); color: #fff; box-shadow: var(--sh-sm);
+  transition: background 0.14s, transform 0.08s, box-shadow 0.14s;
+}
+.btn-primary:hover { background: var(--brand-strong); box-shadow: var(--sh-md); }
+.btn-primary:active { transform: translateY(1px); }
+
+.content { padding: 26px 30px 60px; }
+
+/* ---------- generic cards ---------- */
+.card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-lg); box-shadow: var(--sh-sm);
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+  letter-spacing: 0.01em;
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ---------- scrollbars ---------- */
+.main::-webkit-scrollbar, .scroll::-webkit-scrollbar { width: 11px; height: 11px; }
+.main::-webkit-scrollbar-thumb, .scroll::-webkit-scrollbar-thumb {
+  background: var(--surface-3); border-radius: 999px; border: 3px solid var(--bg);
+}
+.main::-webkit-scrollbar-thumb:hover { background: var(--line-2); }
+
+/* ---------- animations ---------- */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes screenIn { from { transform: translateY(8px); } to { transform: none; } }
+@keyframes pop { from { transform: scale(0.96); } to { transform: scale(1); } }
+@keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drawerIn { from { transform: translateX(26px); } to { transform: none; } }
+.screen-enter { animation: screenIn 0.3s var(--ease); }
