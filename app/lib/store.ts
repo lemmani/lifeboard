@@ -1,14 +1,10 @@
-import {
-  goals as seedGoals,
-  monthly as seedMonthly,
-  sources as seedSources,
-  tasks as seedTasks,
-  transactions as seedTransactions,
-  type Goal,
-  type IncomeSource,
-  type Task,
-  type Transaction,
+import type {
+  Goal,
+  IncomeSource,
+  Task,
+  Transaction,
 } from "./data";
+import seedData from "./seed.json";
 
 export interface DbSnapshot {
   goals: Goal[];
@@ -18,16 +14,20 @@ export interface DbSnapshot {
   monthly: Record<string, number[]>;
 }
 
-const STORAGE_KEY = "lifeboard.v1";
+const STORAGE_KEY = "lifeboard.v2";
 
 function seedSnapshot(): DbSnapshot {
+  const seed = seedData as unknown as DbSnapshot;
   return {
-    goals: seedGoals.map((g) => ({ ...g })),
-    tasks: seedTasks.map((t) => ({ ...t })),
-    sources: seedSources.map((s) => ({ ...s, linked_goals: [...s.linked_goals] })),
-    transactions: seedTransactions.map((x) => ({ ...x })),
+    goals: seed.goals.map((g) => ({ ...g })),
+    tasks: seed.tasks.map((t) => ({ ...t })),
+    sources: seed.sources.map((s) => ({
+      ...s,
+      linked_goals: [...s.linked_goals],
+    })),
+    transactions: seed.transactions.map((x) => ({ ...x })),
     monthly: Object.fromEntries(
-      Object.entries(seedMonthly).map(([k, v]) => [k, [...v]]),
+      Object.entries(seed.monthly).map(([k, v]) => [k, [...v]]),
     ),
   };
 }
