@@ -1,7 +1,3 @@
-"use server";
-
-import { revalidatePath } from "next/cache";
-import { db, newId } from "./lib/db";
 import {
   parseD,
   type ExpenseCategory,
@@ -10,75 +6,74 @@ import {
   type Task,
   type Urgency,
 } from "./lib/data";
-
-function bumpUI() {
-  revalidatePath("/");
-}
+import { getSnapshot, newId, resetToSeed, setSnapshot } from "./lib/store";
 
 export async function createGoal(
   goal: Omit<Goal, "id">,
   newTasks: Omit<Task, "id" | "parent_goal">[],
 ): Promise<{ id: string }> {
   const id = newId("g_");
-  const insG = db().prepare(`
-    INSERT INTO goals (id,title,category,start_date,target_date,financial_target,financial_current,focus_period,status,note)
-    VALUES (@id,@title,@category,@start_date,@target_date,@financial_target,@financial_current,@focus_period,@status,@note)
-  `);
-  const insT = db().prepare(`
-    INSERT INTO tasks (id,title,parent_goal,importance,urgency,due_date,status)
-    VALUES (@id,@title,@parent_goal,@importance,@urgency,@due_date,@status)
-  `);
-  db().transaction(() => {
-    insG.run({ ...goal, id });
-    newTasks.forEach((t) =>
-      insT.run({ ...t, id: newId("t_"), parent_goal: id }),
-    );
-  })();
-  bumpUI();
+  const snap = getSnapshot();
+  const nextGoals = [...snap.goals, { ...goal, id } as Goal];
+  const nextTasks = [
+    ...snap.tasks,
+    ...newTasks.map(
+      (t) =>
+        ({
+          ...t,
+          id: newId("t_"),
+          parent_goal: id,
+        }) as Task,
+    ),
+  ];
+  setSnapshot({ ...snap, goals: nextGoals, tasks: nextTasks });
   return { id };
 }
 
 export async function updateGoal(goal: Goal): Promise<void> {
-  db()
-    .prepare(
-      `UPDATE goals SET title=@title, category=@category, start_date=@start_date,
-        target_date=@target_date, financial_target=@financial_target,
-        financial_current=@financial_current, focus_period=@focus_period,
-        status=@status, note=@note
-        WHERE id=@id`,
-    )
-    .run(goal);
-  bumpUI();
+  const snap = getSnapshot();
+  setSnapshot({
+    ...snap,
+    goals: snap.goals.map((g) => (g.id === goal.id ? goal : g)),
+  });
 }
 
 export async function deleteGoal(id: string): Promise<void> {
-  db().prepare("DELETE FROM goals WHERE id=?").run(id);
-  bumpUI();
+  const snap = getSnapshot();
+  setSnapshot({
+    ...snap,
+    goals: snap.goals.filter((g) => g.id !== id),
+    tasks: snap.tasks.filter((t) => t.parent_goal !== id),
+    sources: snap.sources.map((s) =>
+      s.linked_goals.includes(id)
+        ? { ...s, linked_goals: s.linked_goals.filter((lg) => lg !== id) }
+        : s,
+    ),
+  });
 }
 
 export async function createTask(
   task: Omit<Task, "id">,
 ): Promise<{ id: string }> {
   const id = newId("t_");
-  db()
-    .prepare(
-      `INSERT INTO tasks (id,title,parent_goal,importance,urgency,due_date,status)
-       VALUES (@id,@title,@parent_goal,@importance,@urgency,@due_date,@status)`,
-    )
-    .run({ ...task, id });
-  bumpUI();
+  const snap = getSnapshot();
+  setSnapshot({
+    ...snap,
+    tasks: [...snap.tasks, { ...task, id } as Task],
+  });
   return { id };
 }
 
 export async function toggleTask(id: string): Promise<void> {
-  db()
-    .prepare(
-      `UPDATE tasks
-       SET status = CASE WHEN status='Done' THEN 'To Do' ELSE 'Done' END
-       WHERE id=?`,
-    )
-    .run(id);
-  bumpUI();
+  const snap = getSnapshot();
+  setSnapshot({
+    ...snap,
+    tasks: snap.tasks.map((t) =>
+      t.id === id
+        ? { ...t, status: t.status === "Done" ? "To Do" : "Done" }
+        : t,
+    ),
+  });
 }
 
 export async function reclassifyTask(
@@ -86,15 +81,29 @@ export async function reclassifyTask(
   importance: Importance,
   urgency: Urgency,
 ): Promise<void> {
-  db()
-    .prepare("UPDATE tasks SET importance=?, urgency=? WHERE id=?")
-    .run(importance, urgency, id);
-  bumpUI();
+  const snap = getSnapshot();
+  setSnapshot({
+    ...snap,
+    tasks: snap.tasks.map((t) =>
+      t.id === id ? { ...t, importance, urgency } : t,
+    ),
+  });
 }
 
 export async function deleteTask(id: string): Promise<void> {
-  db().prepare("DELETE FROM tasks WHERE id=?").run(id);
-  bumpUI();
+  const snap = getSnapshot();
+  setSnapshot({
+    ...snap,
+    tasks: snap.tasks.filter((t) => t.id !== id),
+  });
+}
+
+export async function updateTask(t: Task): Promise<void> {
+  const snap = getSnapshot();
+  setSnapshot({
+    ...snap,
+    tasks: snap.tasks.map((existing) => (existing.id === t.id ? t : existing)),
+  });
 }
 
 export async function logIncome(p: {
@@ -105,42 +114,57 @@ export async function logIncome(p: {
 }): Promise<{ id: string; linkedGoals: string[] }> {
   const id = newId("x_");
   const monthIdx = parseD(p.date).getMonth();
-  const sourceRow = db()
-    .prepare("SELECT linked_goals FROM sources WHERE id=?")
-    .get(p.sourceId) as { linked_goals: string } | undefined;
-  const linkedGoals: string[] = sourceRow
-    ? (JSON.parse(sourceRow.linked_goals) as string[])
-    : [];
+  const snap = getSnapshot();
+  const source = snap.sources.find((s) => s.id === p.sourceId);
+  const linkedGoals = source ? [...source.linked_goals] : [];
 
-  db().transaction(() => {
-    db()
-      .prepare(
-        "INSERT INTO transactions (id,date,source,amount,note,kind) VALUES (?,?,?,?,?, 'income')",
-      )
-      .run(id, p.date, p.sourceId, p.amount, p.note);
-    db()
-      .prepare(
-        "UPDATE sources SET actual_ytd = actual_ytd + ? WHERE id=?",
-      )
-      .run(p.amount, p.sourceId);
-    db()
-      .prepare(
-        `INSERT INTO monthly (source_id, month_idx, amount) VALUES (?,?,?)
-         ON CONFLICT(source_id, month_idx) DO UPDATE SET amount = amount + excluded.amount`,
-      )
-      .run(p.sourceId, monthIdx, p.amount);
-    if (linkedGoals.length) {
-      const share = p.amount / linkedGoals.length;
-      const upd = db().prepare(
-        `UPDATE goals
-         SET financial_current = MIN(financial_target, financial_current + ?),
-             status = CASE WHEN status='Not Started' THEN 'In Progress' ELSE status END
-         WHERE id=? AND financial_target > 0`,
-      );
-      linkedGoals.forEach((gid) => upd.run(share, gid));
-    }
-  })();
-  bumpUI();
+  const nextTx = [
+    ...snap.transactions,
+    {
+      id,
+      date: p.date,
+      source: p.sourceId,
+      amount: p.amount,
+      note: p.note,
+      kind: "income" as const,
+    },
+  ];
+
+  const nextSources = snap.sources.map((s) =>
+    s.id === p.sourceId
+      ? { ...s, actual_ytd: s.actual_ytd + p.amount }
+      : s,
+  );
+
+  const existing = snap.monthly[p.sourceId] ?? new Array(12).fill(0);
+  const bumped = [...existing];
+  bumped[monthIdx] = (bumped[monthIdx] ?? 0) + p.amount;
+  const nextMonthly = { ...snap.monthly, [p.sourceId]: bumped };
+
+  let nextGoals = snap.goals;
+  if (linkedGoals.length) {
+    const share = p.amount / linkedGoals.length;
+    const targets = new Set(linkedGoals);
+    nextGoals = snap.goals.map((g) => {
+      if (!targets.has(g.id) || g.financial_target <= 0) return g;
+      return {
+        ...g,
+        financial_current: Math.min(
+          g.financial_target,
+          g.financial_current + share,
+        ),
+        status: g.status === "Not Started" ? "In Progress" : g.status,
+      };
+    });
+  }
+
+  setSnapshot({
+    ...snap,
+    goals: nextGoals,
+    sources: nextSources,
+    transactions: nextTx,
+    monthly: nextMonthly,
+  });
   return { id, linkedGoals };
 }
 
@@ -151,111 +175,95 @@ export async function logExpense(p: {
   note: string;
 }): Promise<{ id: string }> {
   const id = newId("e_");
-  db()
-    .prepare(
-      "INSERT INTO transactions (id,date,source,amount,note,kind) VALUES (?,?,?,?,?, 'expense')",
-    )
-    .run(id, p.date, p.category, p.amount, p.note);
-  bumpUI();
+  const snap = getSnapshot();
+  setSnapshot({
+    ...snap,
+    transactions: [
+      ...snap.transactions,
+      {
+        id,
+        date: p.date,
+        source: p.category,
+        amount: p.amount,
+        note: p.note,
+        kind: "expense" as const,
+      },
+    ],
+  });
   return { id };
-}
-
-export async function updateTask(t: Task): Promise<void> {
-  db()
-    .prepare(
-      `UPDATE tasks SET title=@title, importance=@importance, urgency=@urgency,
-         due_date=@due_date, status=@status WHERE id=@id`,
-    )
-    .run(t);
-  bumpUI();
 }
 
 export async function updateGoalSources(
   goalId: string,
   sourceIds: string[],
 ): Promise<void> {
-  const allSources = db()
-    .prepare("SELECT id, linked_goals FROM sources")
-    .all() as { id: string; linked_goals: string }[];
   const want = new Set(sourceIds);
-  db().transaction(() => {
-    const upd = db().prepare(
-      "UPDATE sources SET linked_goals=? WHERE id=?",
-    );
-    allSources.forEach((s) => {
-      const linked = new Set(JSON.parse(s.linked_goals) as string[]);
-      const wasLinked = linked.has(goalId);
+  const snap = getSnapshot();
+  setSnapshot({
+    ...snap,
+    sources: snap.sources.map((s) => {
+      const wasLinked = s.linked_goals.includes(goalId);
       const shouldBeLinked = want.has(s.id);
-      if (wasLinked === shouldBeLinked) return;
-      if (shouldBeLinked) linked.add(goalId);
-      else linked.delete(goalId);
-      upd.run(JSON.stringify([...linked]), s.id);
-    });
-  })();
-  bumpUI();
+      if (wasLinked === shouldBeLinked) return s;
+      const nextLinked = new Set(s.linked_goals);
+      if (shouldBeLinked) nextLinked.add(goalId);
+      else nextLinked.delete(goalId);
+      return { ...s, linked_goals: [...nextLinked] };
+    }),
+  });
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
-  const tx = db()
-    .prepare(
-      "SELECT date, source, amount, kind FROM transactions WHERE id=?",
-    )
-    .get(id) as
-    | { date: string; source: string; amount: number; kind: string }
-    | undefined;
+  const snap = getSnapshot();
+  const tx = snap.transactions.find((x) => x.id === id);
   if (!tx) return;
+
   if (tx.kind === "expense") {
-    db().prepare("DELETE FROM transactions WHERE id=?").run(id);
-    bumpUI();
+    setSnapshot({
+      ...snap,
+      transactions: snap.transactions.filter((x) => x.id !== id),
+    });
     return;
   }
+
   const monthIdx = parseD(tx.date).getMonth();
-  const sourceRow = db()
-    .prepare("SELECT linked_goals FROM sources WHERE id=?")
-    .get(tx.source) as { linked_goals: string } | undefined;
-  const linkedGoals: string[] = sourceRow
-    ? (JSON.parse(sourceRow.linked_goals) as string[])
-    : [];
-  db().transaction(() => {
-    db().prepare("DELETE FROM transactions WHERE id=?").run(id);
-    db()
-      .prepare("UPDATE sources SET actual_ytd = actual_ytd - ? WHERE id=?")
-      .run(tx.amount, tx.source);
-    db()
-      .prepare(
-        `UPDATE monthly SET amount = amount - ?
-         WHERE source_id=? AND month_idx=?`,
-      )
-      .run(tx.amount, tx.source, monthIdx);
-    db()
-      .prepare(
-        "DELETE FROM monthly WHERE source_id=? AND month_idx=? AND amount<=0",
-      )
-      .run(tx.source, monthIdx);
-    if (linkedGoals.length) {
-      const share = tx.amount / linkedGoals.length;
-      const upd = db().prepare(
-        `UPDATE goals SET financial_current = MAX(0, financial_current - ?) WHERE id=?`,
-      );
-      linkedGoals.forEach((gid) => upd.run(share, gid));
-    }
-  })();
-  bumpUI();
+  const source = snap.sources.find((s) => s.id === tx.source);
+  const linkedGoals = source ? [...source.linked_goals] : [];
+
+  const nextSources = snap.sources.map((s) =>
+    s.id === tx.source
+      ? { ...s, actual_ytd: s.actual_ytd - tx.amount }
+      : s,
+  );
+
+  const nextMonthly = { ...snap.monthly };
+  const bucket = nextMonthly[tx.source]
+    ? [...nextMonthly[tx.source]]
+    : new Array(12).fill(0);
+  bucket[monthIdx] = (bucket[monthIdx] ?? 0) - tx.amount;
+  if (bucket.every((v) => v <= 0)) delete nextMonthly[tx.source];
+  else nextMonthly[tx.source] = bucket;
+
+  let nextGoals = snap.goals;
+  if (linkedGoals.length) {
+    const share = tx.amount / linkedGoals.length;
+    const targets = new Set(linkedGoals);
+    nextGoals = snap.goals.map((g) =>
+      targets.has(g.id)
+        ? { ...g, financial_current: Math.max(0, g.financial_current - share) }
+        : g,
+    );
+  }
+
+  setSnapshot({
+    ...snap,
+    goals: nextGoals,
+    sources: nextSources,
+    transactions: snap.transactions.filter((x) => x.id !== id),
+    monthly: nextMonthly,
+  });
 }
 
 export async function resetDatabase(): Promise<void> {
-  db().exec(`
-    DELETE FROM monthly;
-    DELETE FROM transactions;
-    DELETE FROM tasks;
-    DELETE FROM sources;
-    DELETE FROM goals;
-  `);
-  // Drop the cached connection so the next access re-runs the seed.
-  const g = globalThis as unknown as { __lbDb?: { close: () => void } };
-  if (g.__lbDb) {
-    g.__lbDb.close();
-    g.__lbDb = undefined;
-  }
-  bumpUI();
+  resetToSeed();
 }

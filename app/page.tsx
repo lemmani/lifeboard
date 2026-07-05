@@ -1,18 +1,19 @@
-import { LifeBoardApp } from "./components/lifeboard-app";
-import { getSnapshot } from "./lib/db";
-import { todayISO } from "./lib/data";
+"use client";
 
-export const dynamic = "force-dynamic";
+import { useSyncExternalStore } from "react";
+import { LifeBoardApp } from "./components/lifeboard-app";
+import { todayISO } from "./lib/data";
+import {
+  getServerSnapshot,
+  getSnapshot,
+  subscribe,
+} from "./lib/store";
 
 const SAVINGS_GOAL_ID = "g-save";
 
 export default function Page() {
-  const snap = getSnapshot();
+  const snap = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  // Savings balance is a derived quantity: every logged income raises it,
-  // every logged expense lowers it. Override the savings goal's stored
-  // financial_current so every screen (tiles, drawer, funding panel, status
-  // derivation) shows the same number.
   const totalIncome = snap.transactions
     .filter((x) => x.kind === "income")
     .reduce((a, x) => a + x.amount, 0);
