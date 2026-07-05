@@ -113,10 +113,47 @@ export async function logIncome(p: {
   note: string;
 }): Promise<{ id: string; linkedGoals: string[] }> {
   const id = newId("x_");
-  const monthIdx = parseD(p.date).getMonth();
+  const txDate = parseD(p.date);
+  const monthIdx = txDate.getMonth();
+  // actual_ytd and the 12-slot monthly chart describe the current year only;
+  // backdated entries from other years must not pollute them.
+  const sameYear = txDate.getFullYear() === new Date().getFullYear();
   const snap = getSnapshot();
   const source = snap.sources.find((s) => s.id === p.sourceId);
   const linkedGoals = source ? [...source.linked_goals] : [];
+
+  const nextSources = sameYear
+    ? snap.sources.map((s) =>
+        s.id === p.sourceId
+          ? { ...s, actual_ytd: s.actual_ytd + p.amount }
+          : s,
+      )
+    : snap.sources;
+
+  let nextMonthly = snap.monthly;
+  if (sameYear) {
+    const existing = snap.monthly[p.sourceId] ?? new Array(12).fill(0);
+    const bumped = [...existing];
+    bumped[monthIdx] = (bumped[monthIdx] ?? 0) + p.amount;
+    nextMonthly = { ...snap.monthly, [p.sourceId]: bumped };
+  }
+
+  const applied: Record<string, number> = {};
+  let nextGoals = snap.goals;
+  if (linkedGoals.length) {
+    const share = p.amount / linkedGoals.length;
+    const targets = new Set(linkedGoals);
+    nextGoals = snap.goals.map((g) => {
+      if (!targets.has(g.id) || g.financial_target <= 0) return g;
+      const credit = Math.min(share, g.financial_target - g.financial_current);
+      applied[g.id] = Math.max(0, credit);
+      return {
+        ...g,
+        financial_current: g.financial_current + applied[g.id],
+        status: g.status === "Not Started" ? "In Progress" : g.status,
+      };
+    });
+  }
 
   const nextTx = [
     ...snap.transactions,
@@ -127,36 +164,9 @@ export async function logIncome(p: {
       amount: p.amount,
       note: p.note,
       kind: "income" as const,
+      applied,
     },
   ];
-
-  const nextSources = snap.sources.map((s) =>
-    s.id === p.sourceId
-      ? { ...s, actual_ytd: s.actual_ytd + p.amount }
-      : s,
-  );
-
-  const existing = snap.monthly[p.sourceId] ?? new Array(12).fill(0);
-  const bumped = [...existing];
-  bumped[monthIdx] = (bumped[monthIdx] ?? 0) + p.amount;
-  const nextMonthly = { ...snap.monthly, [p.sourceId]: bumped };
-
-  let nextGoals = snap.goals;
-  if (linkedGoals.length) {
-    const share = p.amount / linkedGoals.length;
-    const targets = new Set(linkedGoals);
-    nextGoals = snap.goals.map((g) => {
-      if (!targets.has(g.id) || g.financial_target <= 0) return g;
-      return {
-        ...g,
-        financial_current: Math.min(
-          g.financial_target,
-          g.financial_current + share,
-        ),
-        status: g.status === "Not Started" ? "In Progress" : g.status,
-      };
-    });
-  }
 
   setSnapshot({
     ...snap,
@@ -226,26 +236,44 @@ export async function deleteTransaction(id: string): Promise<void> {
     return;
   }
 
-  const monthIdx = parseD(tx.date).getMonth();
+  const txDate = parseD(tx.date);
+  const monthIdx = txDate.getMonth();
+  const sameYear = txDate.getFullYear() === new Date().getFullYear();
   const source = snap.sources.find((s) => s.id === tx.source);
   const linkedGoals = source ? [...source.linked_goals] : [];
 
-  const nextSources = snap.sources.map((s) =>
-    s.id === tx.source
-      ? { ...s, actual_ytd: s.actual_ytd - tx.amount }
-      : s,
-  );
+  const nextSources = sameYear
+    ? snap.sources.map((s) =>
+        s.id === tx.source
+          ? { ...s, actual_ytd: s.actual_ytd - tx.amount }
+          : s,
+      )
+    : snap.sources;
 
   const nextMonthly = { ...snap.monthly };
-  const bucket = nextMonthly[tx.source]
-    ? [...nextMonthly[tx.source]]
-    : new Array(12).fill(0);
-  bucket[monthIdx] = (bucket[monthIdx] ?? 0) - tx.amount;
-  if (bucket.every((v) => v <= 0)) delete nextMonthly[tx.source];
-  else nextMonthly[tx.source] = bucket;
+  if (sameYear) {
+    const bucket = nextMonthly[tx.source]
+      ? [...nextMonthly[tx.source]]
+      : new Array(12).fill(0);
+    bucket[monthIdx] = (bucket[monthIdx] ?? 0) - tx.amount;
+    if (bucket.every((v) => v <= 0)) delete nextMonthly[tx.source];
+    else nextMonthly[tx.source] = bucket;
+  }
 
   let nextGoals = snap.goals;
-  if (linkedGoals.length) {
+  if (tx.applied) {
+    // Reverse exactly what was credited when the income was logged.
+    const applied = tx.applied;
+    nextGoals = snap.goals.map((g) =>
+      applied[g.id]
+        ? {
+            ...g,
+            financial_current: Math.max(0, g.financial_current - applied[g.id]),
+          }
+        : g,
+    );
+  } else if (linkedGoals.length) {
+    // Legacy transactions logged before `applied` existed: best-effort split.
     const share = tx.amount / linkedGoals.length;
     const targets = new Set(linkedGoals);
     nextGoals = snap.goals.map((g) =>

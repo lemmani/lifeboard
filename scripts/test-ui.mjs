@@ -9,7 +9,6 @@
 
 import { chromium } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { execSync } from "node:child_process";
 
 const BASE = "http://localhost:3000";
 const SHOTS = "screenshots";
@@ -44,24 +43,34 @@ async function step(page, name, fn) {
   if (!pass && process.env.STOP_ON_FAIL) throw new Error(name + ": " + err);
 }
 
-// Reset DB to clean seed by calling the resetDatabase Server Action,
-// which closes the cached connection so the seed runs on next access.
-function resetDb() {
-  execSync(
-    `curl -sS -X POST http://localhost:3000/ -H 'Content-Type: text/plain;charset=UTF-8' -H 'Next-Action: 00cd6d89a6066c7f69f8083791687ba8371dc3f4c0' -H 'Accept: text/x-component' --data-raw '[]' -o /dev/null`,
-  );
-  // Pull the page once so the new seed is materialized.
-  execSync("curl -sS -o /dev/null http://localhost:3000/");
+const STORAGE_KEY = "lifeboard.v2";
+
+// The app stores all data in localStorage under STORAGE_KEY.
+// Reset = remove the key and reload so the store falls back to seed.json.
+async function resetDb(page) {
+  await page.evaluate((k) => localStorage.removeItem(k), STORAGE_KEY);
+  await page.reload({ waitUntil: "networkidle" });
 }
 
-function sqlite(query) {
-  return execSync(`sqlite3 lifeboard.db "${query.replace(/"/g, '\\"')}"`).toString().trim();
+// Read the persisted snapshot for assertions (null until first mutation).
+async function getStore(page) {
+  return page.evaluate(
+    (k) => JSON.parse(localStorage.getItem(k) || "null"),
+    STORAGE_KEY,
+  );
+}
+
+// The bottom-center toast can overlap buttons for ~2.6s; dismiss it so
+// clicks are not intercepted.
+async function clearToast(page) {
+  const toast = page.locator('button[title="Dismiss"]');
+  if (await toast.count()) {
+    await toast.click({ timeout: 2000 }).catch(() => {});
+    await page.waitForTimeout(150);
+  }
 }
 
 (async () => {
-  console.log("— Resetting database —");
-  resetDb();
-
   const browser = await chromium.launch({ headless: true });
   const ctx = await browser.newContext({
     viewport: { width: 1440, height: 900 },
@@ -79,6 +88,7 @@ function sqlite(query) {
   try {
     await step(page, "load home", async () => {
       await page.goto(BASE, { waitUntil: "networkidle" });
+      await resetDb(page);
       await page.waitForSelector("text=LifeBoard");
     });
 
@@ -123,9 +133,10 @@ function sqlite(query) {
       await page.locator('button:has-text("Create goal")').click();
       // Toast confirmation
       await page.waitForSelector("text=added to the timeline", { timeout: 4000 });
-      // DB confirmation
-      const n = sqlite("SELECT COUNT(*) FROM goals WHERE title='UI Test Goal';");
-      if (n !== "1") throw new Error(`expected 1 row in DB, got ${n}`);
+      // Store confirmation
+      const s = await getStore(page);
+      const n = s.goals.filter((g) => g.title === "UI Test Goal").length;
+      if (n !== 1) throw new Error(`expected 1 goal in store, got ${n}`);
     });
 
     // --- Click goal bar → drawer ---
@@ -138,8 +149,9 @@ function sqlite(query) {
       await page.locator('input[placeholder*="Add a task"]').fill("Drawer task");
       await page.locator('form button:has-text("Add")').click();
       await page.waitForTimeout(300);
-      const n = sqlite("SELECT COUNT(*) FROM tasks WHERE title='Drawer task';");
-      if (n !== "1") throw new Error(`drawer task not persisted: count=${n}`);
+      const s = await getStore(page);
+      const n = s.tasks.filter((t) => t.title === "Drawer task").length;
+      if (n !== 1) throw new Error(`drawer task not persisted: count=${n}`);
     });
 
     await step(page, "drawer: toggle task done", async () => {
@@ -149,21 +161,26 @@ function sqlite(query) {
       const cb = card.locator('button').first();
       await cb.click();
       await page.waitForTimeout(300);
-      const status = sqlite("SELECT status FROM tasks WHERE title='Drawer task';");
+      const s = await getStore(page);
+      const status = s.tasks.find((t) => t.title === "Drawer task")?.status;
       if (status !== "Done") throw new Error(`expected Done, got ${status}`);
     });
 
     await step(page, "drawer: Mark Complete goal", async () => {
-      await page.locator('button:has-text("Done"):visible').first().click();
+      await clearToast(page);
+      await page.locator('button[title="Mark goal complete"]').click();
       await page.waitForTimeout(500);
-      const status = sqlite("SELECT status FROM goals WHERE title='UI Test Goal';");
+      const s = await getStore(page);
+      const status = s.goals.find((g) => g.title === "UI Test Goal")?.status;
       if (status !== "Completed") throw new Error(`expected Completed, got ${status}`);
     });
 
     await step(page, "drawer: Reopen goal", async () => {
-      await page.locator('button:has-text("Reopen")').click();
+      await clearToast(page);
+      await page.locator('button[title="Reopen this goal"]').click();
       await page.waitForTimeout(500);
-      const status = sqlite("SELECT status FROM goals WHERE title='UI Test Goal';");
+      const s = await getStore(page);
+      const status = s.goals.find((g) => g.title === "UI Test Goal")?.status;
       if (status === "Completed") throw new Error(`still Completed`);
     });
 
@@ -185,20 +202,15 @@ function sqlite(query) {
       await page.waitForSelector("text=Save changes");
       await page.locator('button:has-text("Save changes")').click();
       await page.waitForTimeout(700);
-      const title = sqlite(
-        "SELECT title FROM goals WHERE id LIKE 'g_%' AND title LIKE 'UI Test Goal%';",
-      );
-      if (!title.includes("edited")) throw new Error(`title not updated: ${title}`);
+      const s = await getStore(page);
+      const goal = s.goals.find((g) => g.title.startsWith("UI Test Goal"));
+      if (!goal?.title.includes("edited"))
+        throw new Error(`title not updated: ${goal?.title}`);
       // Verify funding link persisted
-      const linked = sqlite(
-        "SELECT linked_goals FROM sources WHERE id='s-vibe';",
-      );
-      const goalId = sqlite(
-        "SELECT id FROM goals WHERE title LIKE 'UI Test Goal%';",
-      );
-      if (!linked.includes(goalId))
+      const vibe = s.sources.find((src) => src.id === "s-vibe");
+      if (!vibe.linked_goals.includes(goal.id))
         throw new Error(
-          `funding link not persisted; goal ${goalId} not in ${linked}`,
+          `funding link not persisted; goal ${goal.id} not in ${JSON.stringify(vibe.linked_goals)}`,
         );
     });
 
@@ -233,8 +245,9 @@ function sqlite(query) {
     await step(page, "confirm dialog: Cancel keeps goal", async () => {
       await page.locator('button:has-text("Cancel")').click();
       await page.waitForTimeout(300);
-      const n = sqlite("SELECT COUNT(*) FROM goals WHERE title LIKE 'UI Test Goal%';");
-      if (n !== "1") throw new Error(`expected 1, got ${n}`);
+      const s = await getStore(page);
+      const n = s.goals.filter((g) => g.title.startsWith("UI Test Goal")).length;
+      if (n !== 1) throw new Error(`expected 1, got ${n}`);
     });
 
     await step(page, "drawer: Delete → confirm → goal removed", async () => {
@@ -242,8 +255,9 @@ function sqlite(query) {
       await page.waitForSelector('text=Delete "UI Test Goal (edited)"?');
       await page.locator('button:has-text("Delete goal")').click();
       await page.waitForTimeout(500);
-      const n = sqlite("SELECT COUNT(*) FROM goals WHERE title LIKE 'UI Test Goal%';");
-      if (n !== "0") throw new Error(`expected 0, got ${n}`);
+      const s = await getStore(page);
+      const n = s.goals.filter((g) => g.title.startsWith("UI Test Goal")).length;
+      if (n !== 0) throw new Error(`expected 0, got ${n}`);
     });
 
     // --- Matrix drag-and-drop ---
@@ -254,7 +268,7 @@ function sqlite(query) {
 
     await step(page, "matrix: drag card across quadrants", async () => {
       const card = page
-        .locator('[draggable="true"]:has-text("Update the financial model")')
+        .locator('[draggable="true"]:has-text("Make Pitch Deck")')
         .first();
       const dst = page.locator('.card:has-text("Eliminate")').first();
       await card.waitFor({ timeout: 5000 });
@@ -270,38 +284,36 @@ function sqlite(query) {
       await dst.dispatchEvent("drop", { dataTransfer });
       await card.dispatchEvent("dragend", { dataTransfer });
       await page.waitForTimeout(800);
-      const row = sqlite(
-        "SELECT importance||'/'||urgency FROM tasks WHERE title='Update the financial model';",
-      );
+      const s = await getStore(page);
+      const t = s.tasks.find((x) => x.title === "Make Pitch Deck");
+      const row = `${t?.importance}/${t?.urgency}`;
       if (row !== "Not Important/Not Urgent")
         throw new Error(`drag did not reclassify: ${row}`);
     });
 
     await step(page, "matrix: complete a task (animation)", async () => {
       const card = page
-        .locator('[draggable="true"]:has-text("Send investor deck to Chanzo Capital")')
+        .locator('[draggable="true"]:has-text("Register Medikated")')
         .first();
       await card.locator("button").first().click({ force: true });
       await page.waitForTimeout(700);
-      const status = sqlite(
-        "SELECT status FROM tasks WHERE title='Send investor deck to Chanzo Capital';",
-      );
+      const s = await getStore(page);
+      const status = s.tasks.find((t) => t.title === "Register Medikated")?.status;
       if (status !== "Done") throw new Error(`task not done: ${status}`);
     });
 
     await step(page, "matrix: delete task via X icon", async () => {
       const card = page
-        .locator('[draggable="true"]:has-text("Renew passport before it expires")')
+        .locator('[draggable="true"]:has-text("Test Platform")')
         .first();
       await card.locator('button[title="Delete task"]').click();
       const dialog = page.locator('.card:has-text("Delete task?")');
       await dialog.waitFor({ timeout: 4000 });
       await dialog.locator('button.btn-primary').click();
       await page.waitForTimeout(600);
-      const n = sqlite(
-        "SELECT COUNT(*) FROM tasks WHERE title='Renew passport before it expires';",
-      );
-      if (n !== "0") throw new Error(`task still present: ${n}`);
+      const s = await getStore(page);
+      const n = s.tasks.filter((t) => t.title === "Test Platform").length;
+      if (n !== 0) throw new Error(`task still present: ${n}`);
     });
 
     // --- Finance: log income, delete transaction ---
@@ -329,10 +341,9 @@ function sqlite(query) {
         .fill("UI test income");
       await page.locator('button:has-text("Log $777")').click();
       await page.waitForSelector("text=$777 logged", { timeout: 4000 });
-      const n = sqlite(
-        "SELECT COUNT(*) FROM transactions WHERE note='UI test income';",
-      );
-      if (n !== "1") throw new Error(`tx not persisted: ${n}`);
+      const s = await getStore(page);
+      const n = s.transactions.filter((x) => x.note === "UI test income").length;
+      if (n !== 1) throw new Error(`tx not persisted: ${n}`);
     });
 
     await step(page, "delete a transaction with confirm", async () => {
@@ -342,10 +353,9 @@ function sqlite(query) {
       await dialog.waitFor({ timeout: 4000 });
       await dialog.locator('button.btn-primary').click();
       await page.waitForTimeout(600);
-      const n = sqlite(
-        "SELECT COUNT(*) FROM transactions WHERE note='UI test income';",
-      );
-      if (n !== "0") throw new Error(`tx still present: ${n}`);
+      const s = await getStore(page);
+      const n = s.transactions.filter((x) => x.note === "UI test income").length;
+      if (n !== 0) throw new Error(`tx still present: ${n}`);
     });
 
     // --- Esc closes modals ---
@@ -379,9 +389,9 @@ function sqlite(query) {
       await dialog.waitFor({ timeout: 4000 });
       await dialog.locator('button.btn-primary').click();
       await page.waitForTimeout(1500);
-      const n = sqlite("SELECT COUNT(*) FROM goals;");
-      if (n !== "6")
-        throw new Error(`expected 6 seed goals after reset, got ${n}`);
+      const s = await getStore(page);
+      if (s.goals.length !== 9)
+        throw new Error(`expected 9 seed goals after reset, got ${s.goals.length}`);
     });
 
     // --- Goals screen: filter + card click ---
@@ -411,7 +421,7 @@ function sqlite(query) {
     });
 
     await step(page, "open drawer via Goals card", async () => {
-      await page.locator('text="Buy a Car"').first().click();
+      await page.locator('text="Save $50k"').first().click();
       await page.waitForSelector("text=Funding progress");
       await page.keyboard.press("Escape");
       await page.waitForTimeout(200);
@@ -453,7 +463,7 @@ function sqlite(query) {
       const before = await page
         .locator('[draggable="true"]')
         .count();
-      await sel.selectOption({ label: "Raise $1M / 30K MRR" });
+      await sel.selectOption({ label: "Raise $100k for Kala" });
       await page.waitForTimeout(200);
       const after = await page
         .locator('[draggable="true"]')
@@ -526,10 +536,11 @@ function sqlite(query) {
       await page.waitForSelector("text=$88 expense logged", {
         timeout: 4000,
       });
-      const n = sqlite(
-        "SELECT COUNT(*) FROM transactions WHERE note='UI test expense' AND kind='expense';",
-      );
-      if (n !== "1") throw new Error(`expense not persisted: ${n}`);
+      const s = await getStore(page);
+      const n = s.transactions.filter(
+        (x) => x.note === "UI test expense" && x.kind === "expense",
+      ).length;
+      if (n !== 1) throw new Error(`expense not persisted: ${n}`);
     });
 
     // --- View All transactions modal ---
@@ -553,30 +564,42 @@ function sqlite(query) {
     await step(page, "Matrix: click task title → Edit modal", async () => {
       await page.locator('.nav-item:has-text("Matrix")').click();
       await page.waitForSelector('.page-title:has-text("Eisenhower")');
-      // Click any task title — use one we know exists
+      // Click any task title — use one we know exists (post-reset seed)
       await page
-        .locator('text="Update the financial model"')
+        .locator('text="Make Pitch Deck"')
         .first()
         .click();
       await page.waitForSelector("text=Edit task");
     });
 
     await step(page, "Edit Task: change title + save", async () => {
-      const input = page.locator('input[value="Update the financial model"]');
-      await input.fill("Update model (edited)");
+      const input = page.locator('input[value="Make Pitch Deck"]');
+      await input.fill("Make Pitch Deck (edited)");
       await page.locator('button:has-text("Save changes")').click();
       await page.waitForSelector("text=Task updated", { timeout: 4000 });
-      const title = sqlite(
-        "SELECT title FROM tasks WHERE title LIKE 'Update model%';",
-      );
-      if (!title.includes("edited"))
+      const s = await getStore(page);
+      const title = s.tasks.find((t) =>
+        t.title.startsWith("Make Pitch Deck"),
+      )?.title;
+      if (!title?.includes("edited"))
         throw new Error(`task title not saved: ${title}`);
     });
 
     // --- Empty state ---
     await step(page, "empty state when no goals", async () => {
-      // Wipe via SQL (faster than UI) then reload
-      execSync("sqlite3 lifeboard.db 'DELETE FROM monthly; DELETE FROM transactions; DELETE FROM tasks; DELETE FROM sources; DELETE FROM goals;'");
+      // Wipe the store directly (faster than UI) then reload
+      await page.evaluate((k) => {
+        localStorage.setItem(
+          k,
+          JSON.stringify({
+            goals: [],
+            tasks: [],
+            sources: [],
+            transactions: [],
+            monthly: {},
+          }),
+        );
+      }, STORAGE_KEY);
       await page.reload({ waitUntil: "networkidle" });
       // We need a Timeline-route empty state. The route default is Timeline.
       await page.waitForSelector("text=No goals yet");
@@ -584,7 +607,7 @@ function sqlite(query) {
     });
 
     // Reseed for next runs
-    execSync(`curl -sS -X POST ${BASE}/ -H 'Content-Type: text/plain;charset=UTF-8' -H 'Next-Action: 00cd6d89a6066c7f69f8083791687ba8371dc3f4c0' -H 'Accept: text/x-component' --data-raw '[]' > /dev/null`);
+    await resetDb(page);
   } catch (e) {
     console.error("\nABORTED:", e.message);
   } finally {

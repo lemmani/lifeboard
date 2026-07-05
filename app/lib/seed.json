@@ -263,7 +263,7 @@
       "projected_annual": 8000,
       "actual_ytd": 1400,
       "linked_goals": [
-        "g-travel"
+        "g_mqjqoxjk1arh"
       ],
       "actions": "Capital, Stripe, products, marketing"
     },
@@ -273,9 +273,7 @@
       "category": "Startup",
       "projected_annual": 50000,
       "actual_ytd": 8000,
-      "linked_goals": [
-        "g-raise"
-      ],
+      "linked_goals": [],
       "actions": "South African Guy, Chanzo Capital, Digital Africa"
     },
     {
@@ -284,9 +282,7 @@
       "category": "Contract",
       "projected_annual": 15000,
       "actual_ytd": 0,
-      "linked_goals": [
-        "g-car"
-      ],
+      "linked_goals": [],
       "actions": "Get $5K seed, visit government offices"
     },
     {
@@ -296,7 +292,7 @@
       "projected_annual": 40000,
       "actual_ytd": 7000,
       "linked_goals": [
-        "g-save"
+        "g_mqjn72l09cs3"
       ],
       "actions": "Start Prudent, Foreign Grants, ISOC, Local Grants"
     },
@@ -327,7 +323,7 @@
       "projected_annual": 360000,
       "actual_ytd": 88000,
       "linked_goals": [
-        "g-save",
+        "g_mqjn72l09cs3",
         "g_mqjndx2oij7i"
       ],
       "actions": "Resume operations, reach $30K MRR"
@@ -339,7 +335,7 @@
       "projected_annual": 20000,
       "actual_ytd": 1200,
       "linked_goals": [
-        "g-save"
+        "g_mqjn72l09cs3"
       ],
       "actions": "Research AI businesses, get Stripe, launch"
     },
@@ -350,9 +346,8 @@
       "projected_annual": 24000,
       "actual_ytd": 9200,
       "linked_goals": [
-        "g-travel",
-        "g-car",
-        "g-masters"
+        "g_mqjqoxjk1arh",
+        "g_mqjqic6d8ahq"
       ],
       "actions": "Find and execute coding contracts"
     }

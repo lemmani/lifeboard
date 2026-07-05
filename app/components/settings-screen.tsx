@@ -283,7 +283,7 @@ export function SettingsScreen({
         <div>
           {row(
             "Export data",
-            "Download all goals, tasks & income from your local database",
+            "Download all goals, tasks & income stored in this browser",
             <div style={{ display: "flex", gap: 8 }}>
               <button className="pill" onClick={onExportJSON}>
                 <IconExport size={14} />
@@ -296,8 +296,8 @@ export function SettingsScreen({
             </div>,
           )}
           {row(
-            "Local database",
-            "Stored at lifeboard.db in the project folder. All changes persist between sessions.",
+            "Local storage",
+            "Stored in this browser's localStorage. Changes persist between sessions on this device.",
             <span
               className="chip"
               style={{
@@ -309,12 +309,12 @@ export function SettingsScreen({
                 className="dot"
                 style={{ background: "var(--st-done)" }}
               />
-              SQLite · WAL
+              localStorage
             </span>,
           )}
           {row(
             "Reset to seed data",
-            "Wipes your local database and reloads the 2026 roadmap. Cannot be undone.",
+            "Wipes this browser's data and reloads the default roadmap. Cannot be undone.",
             <button
               className="pill"
               disabled={pending}

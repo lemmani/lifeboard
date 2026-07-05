@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import {
   CATEGORY,
   fmtDate,
@@ -87,6 +93,14 @@ export function Matrix({
   const [dragId, setDragId] = useState<string | null>(null);
   const [overQ, setOverQ] = useState<string | null>(null);
   const [completing, setCompleting] = useState<Record<string, boolean>>({});
+  const completeTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  useEffect(
+    () => () => {
+      completeTimers.current.forEach((t) => clearTimeout(t));
+    },
+    [],
+  );
 
   function goalName(id: string) {
     const g = goals.find((x) => x.id === id);
@@ -109,7 +123,8 @@ export function Matrix({
 
   function handleComplete(id: string) {
     setCompleting((c) => ({ ...c, [id]: true }));
-    setTimeout(() => {
+    const timer = setTimeout(() => {
+      completeTimers.current.delete(timer);
       onToggleTask(id);
       setCompleting((c) => {
         const n = { ...c };
@@ -117,6 +132,7 @@ export function Matrix({
         return n;
       });
     }, 460);
+    completeTimers.current.add(timer);
   }
 
   function onDrop(q: (typeof QUADS)[number]) {

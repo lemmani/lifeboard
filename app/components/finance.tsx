@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import {
   EXPENSE_CAT_COLOR,
+  SAVINGS_GOAL_ID,
   SOURCE_CAT,
   STATUS,
   deriveGoalStatus,
@@ -25,14 +26,6 @@ import {
   IconWallet,
 } from "./icons";
 import type { ConfirmRequest } from "./confirm-dialog";
-
-const YEAR_DAYS = 365;
-const YEAR_START = "2026-01-01";
-function dayOfYear(s: string) {
-  return Math.round(
-    (parseD(s).getTime() - parseD(YEAR_START).getTime()) / 86400000,
-  );
-}
 
 interface Props {
   goals: Goal[];
@@ -88,7 +81,7 @@ export function Finance({
     )
     .reduce((a, x) => a + x.amount, 0);
 
-  const savings = goals.find((g) => g.id === "g-save");
+  const savings = goals.find((g) => g.id === SAVINGS_GOAL_ID);
   const savingsBalance = savings?.financial_current ?? 0;
   const savingsTarget = savings?.financial_target ?? 0;
   const savingsPct = savingsTarget
@@ -228,26 +221,36 @@ export function Finance({
   const SW = 22;
   const C = 2 * Math.PI * R;
   let acc = 0;
-  const donutSegs = catList.map((k) => {
-    const frac = catTotals[k] / totalActual;
-    const seg = {
-      k,
-      color: SOURCE_CAT[k as keyof typeof SOURCE_CAT],
-      len: frac * C,
-      off: acc,
-      frac,
-    };
-    acc += frac * C;
-    return seg;
-  });
+  const catSum = catList.reduce((a, k) => a + catTotals[k], 0);
+  const donutSegs =
+    catSum > 0
+      ? catList.map((k) => {
+          const frac = catTotals[k] / catSum;
+          const seg = {
+            k,
+            color: SOURCE_CAT[k as keyof typeof SOURCE_CAT],
+            len: frac * C,
+            off: acc,
+            frac,
+          };
+          acc += frac * C;
+          return seg;
+        })
+      : [];
 
   function exportCSV() {
     const rows: (string | number)[][] = [
-      ["Date", "Source", "Amount USD", "Note"],
+      ["Date", "Kind", "Source", "Amount USD", "Note"],
     ];
     transactions.forEach((x) => {
       const s = sources.find((z) => z.id === x.source);
-      rows.push([x.date, s ? s.source_name : x.source, x.amount, x.note]);
+      rows.push([
+        x.date,
+        x.kind,
+        s ? s.source_name : x.source,
+        x.kind === "expense" ? -x.amount : x.amount,
+        x.note,
+      ]);
     });
     const csv = rows
       .map((r) => r.map((c) => '"' + c + '"').join(","))
@@ -255,7 +258,7 @@ export function Finance({
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "lifeboard-income.csv";
+    a.download = "lifeboard-transactions.csv";
     a.click();
   }
 
@@ -366,7 +369,7 @@ export function Finance({
               }}
             />
             {monthLabels.map((m, mi) => {
-              const future = mi > 5;
+              const future = mi > curMonthIdx;
               return (
                 <div
                   key={m}

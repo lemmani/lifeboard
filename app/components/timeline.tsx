@@ -17,8 +17,6 @@ import { IconBolt, IconCheck, IconPlus } from "./icons";
 import { GoalDrawer } from "./goal-drawer";
 import type { ConfirmRequest } from "./confirm-dialog";
 
-const YEAR_START = "2026-01-01";
-const YEAR_DAYS = 365;
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
@@ -28,20 +26,24 @@ const MON_ABBR = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-function dayOfYear(s: string) {
-  return daysBetween(YEAR_START, s);
+function yearDays(year: number) {
+  return daysBetween(`${year}-01-01`, `${year + 1}-01-01`);
 }
 
-function monthOffsets() {
+function dayOfYear(year: number, s: string) {
+  return daysBetween(`${year}-01-01`, s);
+}
+
+function monthOffsets(year: number) {
   const out: number[] = [];
   for (let m = 0; m < 12; m++)
     out.push(
       daysBetween(
-        YEAR_START,
-        "2026-" + String(m + 1).padStart(2, "0") + "-01",
+        `${year}-01-01`,
+        year + "-" + String(m + 1).padStart(2, "0") + "-01",
       ),
     );
-  out.push(YEAR_DAYS);
+  out.push(yearDays(year));
   return out;
 }
 
@@ -109,15 +111,16 @@ export function Timeline({
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const ppd = ZOOMS[zoom];
-  const trackW = YEAR_DAYS * ppd;
+  const year = +today.slice(0, 4);
+  const daysInYear = yearDays(year);
+  const trackW = daysInYear * ppd;
   const ROW_H = 58;
   const showDays = zoom === "Month";
   const HEAD_H = showDays ? 76 : 56;
   const DAY_ROW_H = showDays ? 20 : 0;
-  const offs = monthOffsets();
-  const year = +today.slice(0, 4);
-  const todayX = dayOfYear(today) * ppd;
-  const primaryEnd = dayOfYear(`${year}-07-01`) * ppd;
+  const offs = monthOffsets(year);
+  const todayX = dayOfYear(year, today) * ppd;
+  const primaryEnd = dayOfYear(year, `${year}-07-01`) * ppd;
   const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
 
   useEffect(() => {
@@ -451,7 +454,7 @@ export function Timeline({
                   );
                 })}
                 {showDays
-                  ? Array.from({ length: YEAR_DAYS }, (_, d) => {
+                  ? Array.from({ length: daysInYear }, (_, d) => {
                       const dateMs =
                         parseD(`${year}-01-01`).getTime() + d * 86400000;
                       const dow = new Date(dateMs).getDay();
@@ -516,7 +519,7 @@ export function Timeline({
                 ))}
 
                 {ordered.map((g, i) => {
-                  const x = dayOfYear(g.start_date) * ppd;
+                  const x = dayOfYear(year, g.start_date) * ppd;
                   const w = Math.max(
                     daysBetween(g.start_date, g.target_date) * ppd,
                     34,

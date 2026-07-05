@@ -74,6 +74,10 @@ export interface Transaction {
   amount: number;
   note: string;
   kind: "income" | "expense";
+  // Per-goal amounts actually credited when this income was logged (shares
+  // are capped at each goal's remaining target, so reversal must use these
+  // exact values rather than recomputing the split).
+  applied?: Record<string, number>;
 }
 
 export const EXPENSE_CATEGORIES = [
@@ -180,6 +184,10 @@ export const monthLabels = [
 ];
 
 export const monthlyTarget = 56000;
+
+// The goal whose financial_current mirrors the running income-minus-expense
+// balance ("Save $50k").
+export const SAVINGS_GOAL_ID = "g_mqjn72l09cs3";
 
 const DAY = 86400000;
 export function parseD(s: string): Date {

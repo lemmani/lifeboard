@@ -36,6 +36,28 @@ let current: DbSnapshot = seedSnapshot();
 let hydrated = false;
 const listeners = new Set<() => void>();
 
+// Goal IDs from the pre-migration database that were replaced by new goals.
+const RENAMED_GOALS: Record<string, string> = {
+  "g-save": "g_mqjn72l09cs3",
+  "g-travel": "g_mqjqoxjk1arh",
+  "g-masters": "g_mqjqic6d8ahq",
+};
+
+// Sources must only link to goals that exist; map renamed IDs across and
+// drop the rest so logged income never funds a phantom goal.
+function repairLinks(snap: DbSnapshot): DbSnapshot {
+  const valid = new Set(snap.goals.map((g) => g.id));
+  return {
+    ...snap,
+    sources: snap.sources.map((s) => ({
+      ...s,
+      linked_goals: [
+        ...new Set(s.linked_goals.map((id) => RENAMED_GOALS[id] ?? id)),
+      ].filter((id) => valid.has(id)),
+    })),
+  };
+}
+
 function hydrateFromStorage() {
   if (hydrated || typeof window === "undefined") return;
   hydrated = true;
@@ -44,7 +66,7 @@ function hydrateFromStorage() {
     if (raw) {
       const parsed = JSON.parse(raw) as DbSnapshot;
       if (parsed && parsed.goals && parsed.tasks && parsed.sources) {
-        current = parsed;
+        current = repairLinks(parsed);
       }
     }
   } catch {

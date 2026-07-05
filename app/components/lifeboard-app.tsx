@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   deriveGoalStatus,
   fmtMoney,
@@ -82,7 +81,6 @@ export function LifeBoardApp({
   transactions,
   monthly,
 }: Props) {
-  const router = useRouter();
   const [route, setRoute] = useState<Route>("timeline");
   const [modal, setModal] = useState<ModalState>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -96,6 +94,13 @@ export function LifeBoardApp({
     toastTimer.current = setTimeout(() => setToast(null), 2600);
   }
 
+  useEffect(
+    () => () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    },
+    [],
+  );
+
   function requestConfirm(req: ConfirmRequest) {
     setConfirmReq(req);
   }
@@ -104,7 +109,6 @@ export function LifeBoardApp({
     startTransition(() => {
       fn().then((v) => {
         if (after) after(v);
-        router.refresh();
       });
     });
   }
@@ -243,8 +247,7 @@ export function LifeBoardApp({
   }
   async function resetData() {
     await actions.resetDatabase();
-    router.refresh();
-    flash("Database reset to seed data");
+    flash("Data reset to defaults");
   }
   function exportJSON() {
     const payload = { today, goals, tasks, sources, transactions, monthly };
@@ -258,11 +261,17 @@ export function LifeBoardApp({
   }
   function exportCSV() {
     const rows: (string | number)[][] = [
-      ["Date", "Source", "Amount USD", "Note"],
+      ["Date", "Kind", "Source", "Amount USD", "Note"],
     ];
     transactions.forEach((x) => {
       const s = sources.find((z) => z.id === x.source);
-      rows.push([x.date, s ? s.source_name : x.source, x.amount, x.note]);
+      rows.push([
+        x.date,
+        x.kind,
+        s ? s.source_name : x.source,
+        x.kind === "expense" ? -x.amount : x.amount,
+        x.note,
+      ]);
     });
     const csv = rows
       .map((r) => r.map((c) => '"' + c + '"').join(","))
@@ -270,7 +279,7 @@ export function LifeBoardApp({
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "lifeboard-income.csv";
+    a.download = "lifeboard-transactions.csv";
     a.click();
   }
 
